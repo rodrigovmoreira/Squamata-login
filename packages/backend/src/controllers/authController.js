@@ -13,7 +13,7 @@ const generateToken = (user, appSlug, tenantId) => {
 export const register = async (req, res) => {
   try {
     const { name, email, password, appSlug, tenantId } = req.body;
-    
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'E-mail já está em uso.' });
@@ -63,7 +63,7 @@ export const login = async (req, res) => {
 
     const slug = appSlug || 'squamata';
     const tenant = tenantId || 'default';
-    
+
     res.json({
       message: 'Login realizado com sucesso',
       token: generateToken(user, slug, tenant),
@@ -73,5 +73,29 @@ export const login = async (req, res) => {
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Erro interno no servidor' });
+  }
+};
+
+export const googleCallbackRedirect = (req, res) => {
+  try {
+    // O Passport já colocou o usuário autenticado/criado dentro de req.user
+    const user = req.user;
+
+    // Pegamos os dados que desempacotamos do 'state' lá na rota
+    const slug = req.body.appSlug || 'squamata';
+    const tenant = req.body.tenantId || 'default';
+
+    // 1. Reutilizamos a sua função para gerar o token!
+    const token = generateToken(user, slug, tenant);
+
+    // 2. Definimos para onde o usuário deve voltar (Frontend)
+    const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5174';
+
+    // 3. Redirecionamos o navegador, passando o token pela URL
+    res.redirect(`${frontendURL}/login?token=${token}&appSlug=${slug}&tenant=${tenant}`);
+
+  } catch (error) {
+    console.error('Google Callback Error:', error);
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5174'}/login?error=OAuthFailed`);
   }
 };
