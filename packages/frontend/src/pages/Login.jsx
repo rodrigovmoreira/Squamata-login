@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Container, Tabs, Input, Button, Text, VStack, Heading, Card, Alert, Flex
-} from '@chakra-ui/react';
+import { Box, Flex, VStack, Heading, Text, Tabs, Input, Icon } from '@chakra-ui/react';
+import { Button } from "../components/ui/button";
+import { Field } from "../components/ui/field";
+import { Toaster, toaster } from "../components/ui/toaster";
+import { PasswordInput } from "../components/ui/password-input";
 import { authAPI } from '../services/api';
 import { useApp } from '../context/AppContext';
+import { useNavigate } from 'react-router-dom';
 import { FcGoogle } from 'react-icons/fc';
+import { FaUserShield } from 'react-icons/fa'; 
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const { dispatch } = useApp();
+  const navigate = useNavigate();
 
-  const [appSlug, setAppSlug] = useState('calango-bot');
+  // Estados Dinâmicos (White-label mínimo)
+  const [appSlug, setAppSlug] = useState('squamata-login');
   const [tenantId, setTenantId] = useState('default');
 
   useEffect(() => {
@@ -28,126 +33,136 @@ const Login = () => {
       ? 'Calango Bot' 
       : 'Calango Inc.';
 
-  const handleAuthSuccess = (response) => {
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    dispatch({ type: 'SET_USER', payload: user });
-    
-    alert(`Sucesso! Token gerado para App: ${appSlug}`);
-  };
-
-  const handleLogin = async (e) => {
+  const handleAuth = async (e, type) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-
     const formData = new FormData(e.target);
-    const data = {
-      email: formData.get('email'),
-      password: formData.get('password'),
-      appSlug,
-      tenantId
+    const data = Object.fromEntries(formData.entries());
+
+    // Validação Estrita de E-mail
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(data.email)) {
+      toaster.create({ title: "E-mail inválido", description: "Insira um formato válido.", type: "error" });
+      setLoading(false);
+      return;
+    }
+
+    // Validação de Senha (Registro)
+    if (type === 'register' && data.password !== data.confirmPassword) {
+      toaster.create({ title: "As senhas não coincidem", type: "error" });
+      setLoading(false);
+      return;
+    }
+
+    // Injeta os dados da URL para o backend saber quem está pedindo acesso
+    const payload = {
+        ...data,
+        appSlug,
+        tenantId
     };
 
     try {
-      const response = await authAPI.login(data);
-      handleAuthSuccess(response);
-    } catch (error) {
-      // Como sugerido no plano de homologação, caso não encontre, tentamos criar (Auto-mocking for Dev)
-      if(error.response?.status === 404) {
-        try {
-          const registerResponse = await authAPI.register({ ...data, name: 'Usuário Teste' });
-          handleAuthSuccess(registerResponse);
-          return;
-        } catch(registerErr) {
-           setError('Erro ao auto-criar usuário de testes');
-        }
-      } else {
-        setError(error.response?.data?.message || 'Erro de conexão com o servidor');
-      }
-    } finally {
-      setLoading(false);
-    }
+      const response = type === 'login'
+        ? await authAPI.login(payload)
+        : await authAPI.register(payload);
+
+      const { token, user } = response.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      dispatch({ type: 'SET_USER', payload: user });
+
+      toaster.create({ title: `Acesso Autorizado!`, type: "success" });
+      
+      alert(`Sucesso! Token gerado para o app: ${appSlug}`);
+      
+    } catch (err) {
+      toaster.create({
+        title: "Acesso Negado",
+        description: err.response?.data?.message || "Você não tem permissão ou os dados estão incorretos.",
+        type: "error"
+      });
+    } finally { setLoading(false); }
   };
 
   return (
-    <Flex minH="100vh" direction={{ base: 'column', md: 'row' }}>
-      <Flex
-        flex={1}
-        bgGradient="to-br" 
-        gradientFrom="green.500"
-        gradientVia="green.600"
-        gradientTo="purple.500"
-        justify="center"
-        align="center"
-        direction="column"
-        p={8}
-        color="white"
-      >
+    <Flex flex={1} minH="100vh" direction={{ base: 'column', md: 'row' }}>
+      <Toaster />
+      
+      {/* Lado Esquerdo - Padrão Calango Inc. Fixo */}
+      <Flex flex={1} bgGradient="to-br" gradientFrom="green.500" gradientTo="purple.600" justify="center" align="center" direction="column" p={8} color="white">
         <VStack gap={6}>
-            <Heading size="2xl" fontWeight="bold">Login - {appNameLabel}</Heading>
-            <Text fontSize="xl" opacity={0.9}>Ecossistema Central de Autenticação</Text>
+          <Box bg="rgba(255, 255, 255, 0.2)" p={8} borderRadius="full" backdropFilter="blur(10px)" boxShadow="xl">
+            <Icon as={FaUserShield} boxSize="100px" />
+          </Box>
+          <Heading size="3xl" fontWeight="bold" letterSpacing="tight">{appNameLabel}</Heading>
+          <Text fontSize="xl" opacity={0.9}>Identidade e Acesso Centralizado</Text>
         </VStack>
       </Flex>
 
-      <Flex
-        flex={1}
-        bg="gray.50"
-        _dark={{ bg: 'gray.900' }}
-        justify="center"
-        align="center"
-        p={4}
-      >
-        <Container maxW="md">
-           <VStack gap={8} w="full">
-              <Card.Root w="full" borderRadius="xl" boxShadow="xl" bg="white" _dark={{ bg: 'gray.800' }}>
-                <Card.Body p={8}>
-                    <VStack gap={6}>
-                        <Heading size="lg" textAlign="center">
-                            Acessar Plataforma
-                        </Heading>
+      {/* Lado Direito - Formulário */}
+      <Flex flex={1} bg="gray.50" justify="center" align="center" p={4}>
+        <Box w="full" maxW="md" boxShadow="2xl" borderRadius="2xl" bg="white" p={8}>
+            <Tabs.Root defaultValue="login" colorPalette="green" variant="enclosed">
+                <Tabs.List w="full" mb={6}>
+                    <Tabs.Trigger value="login" flex={1} py={3} fontWeight="bold">Login</Tabs.Trigger>
+                    <Tabs.Trigger value="register" flex={1} py={3} fontWeight="bold">Homologação (Criar)</Tabs.Trigger>
+                </Tabs.List>
+
+                {/* Aba de Login */}
+                <Tabs.Content value="login">
+                    <form onSubmit={(e) => handleAuth(e, 'login')}>
+                    <VStack gap={4} align="stretch">
+                        <Heading size="md" textAlign="center" mb={2} color="gray.700">Bem-vindo(a)</Heading>
                         
-                        {error && (
-                            <Alert.Root status="error">
-                              <Alert.Title>{error}</Alert.Title>
-                            </Alert.Root>
-                        )}
+                        <Button 
+                          w="full" 
+                          variant="outline" 
+                          type="button" 
+                          mb={2}
+                          onClick={() => {
+                            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/v1';
+                            window.location.href = `${backendUrl}/auth/google?appSlug=${appSlug}&tenantId=${tenantId}`;
+                          }}
+                        >
+                          <FcGoogle style={{ marginRight: '8px' }} /> Continuar com Google
+                        </Button>
+                        <Text fontSize="xs" color="gray.400" textAlign="center">Ou use seu e-mail</Text>
 
-                        <Tabs.Root defaultValue="login" variant="enclosed" width="100%">
-                            <Tabs.List>
-                                <Tabs.Trigger value="login" flex={1}>Login / Registro de Teste</Tabs.Trigger>
-                            </Tabs.List>
-
-                            <Tabs.Content value="login" px={0} mt={4}>
-                                <VStack gap={4}>
-                                    <Button w="full" variant="outline" onClick={() => window.location.href = `http://localhost:3001/api/v1/auth/google`}>
-                                        <FcGoogle /> Continuar com Google
-                                    </Button>
-
-                                    <Text fontSize="sm" color="gray.500">ou</Text>
-
-                                    <form onSubmit={handleLogin} style={{ width: '100%' }}>
-                                        <VStack gap={4}>
-                                            <Input name="email" type="email" placeholder="seu@email.com" size="lg" required />
-                                            <Input name="password" type="password" placeholder="Sua senha" size="lg" required />
-                                        <Button type="submit" colorPalette="green" size="lg" width="100%" loading={loading}>
-                                            Entrar
-                                        </Button>
-                                        </VStack>
-                                    </form>
-                                </VStack>
-                            </Tabs.Content>
-                        </Tabs.Root>
-
-                        <Text fontSize="sm" color="gray.500" textAlign="center">
-                            Homologação Simplificada Calango Inc.
-                        </Text>
+                        <Field label="E-mail">
+                            <Input name="email" type="email" placeholder="seu@email.com" required color="gray.800" />
+                        </Field>
+                        <Field label="Senha">
+                            <PasswordInput name="password" placeholder="Sua senha" required color="gray.800" />
+                        </Field>
+                        <Button type="submit" colorPalette="green" size="lg" loading={loading} mt={2}>Autenticar</Button>
                     </VStack>
-                </Card.Body>
-              </Card.Root>
-           </VStack>
-        </Container>
+                    </form>
+                </Tabs.Content>
+
+                {/* Aba de Registro (Mock para testes) */}
+                <Tabs.Content value="register">
+                    <form onSubmit={(e) => handleAuth(e, 'register')}>
+                    <VStack gap={4} align="stretch">
+                        <Heading size="md" textAlign="center" mb={2} color="gray.700">Criar Usuário de Teste</Heading>
+                        <Field label="Nome">
+                            <Input name="name" placeholder="Seu nome" required color="gray.800" />
+                        </Field>
+                        <Field label="E-mail">
+                            <Input name="email" type="email" placeholder="seu@email.com" required color="gray.800" />
+                        </Field>
+                        <Field label="Senha">
+                            <PasswordInput name="password" placeholder="Mínimo 6 caracteres" required color="gray.800" />
+                        </Field>
+                        <Field label="Confirmar Senha">
+                            <PasswordInput name="confirmPassword" placeholder="Repita a senha" required color="gray.800" />
+                        </Field>
+                        <Button type="submit" colorPalette="green" size="lg" loading={loading}>Criar & Acessar</Button>
+                    </VStack>
+                    </form>
+                </Tabs.Content>
+            </Tabs.Root>
+            <Text fontSize="xs" color="gray.500" textAlign="center" mt={6}>Squamata Identity &copy; 2026</Text>
+        </Box>
       </Flex>
     </Flex>
   );
