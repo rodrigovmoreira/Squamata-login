@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Flex, VStack, Heading, Text, Tabs, Input, Icon } from '@chakra-ui/react';
 import { Button } from "../components/ui/button";
 import { Field } from "../components/ui/field";
@@ -19,13 +19,68 @@ const Login = () => {
   const [appSlug, setAppSlug] = useState('squamata-login');
   const [tenantId, setTenantId] = useState('default');
 
+  // ==========================================
+  // O "MOTOR DE CAPTURA" DO GOOGLE OAUTH
+  // ==========================================
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const slugParams = params.get('app');
-    const tenantParams = params.get('tenant');
+    
+    // Suporta os nomes que vêm do redirecionamento do backend
+    const slugParams = params.get('appSlug') || params.get('app');
+    const tenantParams = params.get('tenantId') || params.get('tenant');
+    const token = params.get('token');
+    const error = params.get('error');
+
     if (slugParams) setAppSlug(slugParams);
     if (tenantParams) setTenantId(tenantParams);
-  }, []);
+
+    // 1. Pista de Pouso: Captura o Token do Google
+    if (token) {
+      try {
+        localStorage.setItem('token', token);
+        
+        // Decodifica o payload do JWT nativamente no navegador
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(window.atob(base64));
+        
+        const user = { 
+          id: payload.uid, 
+          email: payload.email, 
+          appSlug: payload.appSlug 
+        };
+        
+        localStorage.setItem('user', JSON.stringify(user));
+        dispatch({ type: 'SET_USER', payload: user });
+
+        toaster.create({ title: `Acesso Autorizado via Google!`, type: "success" });
+        
+      } catch (err) {
+        console.error("Erro ao processar token do Google:", err);
+      }
+
+      // 2. Limpeza de Segurança (Apaga o token da URL)
+      window.history.replaceState(
+        {}, 
+        document.title, 
+        `${window.location.pathname}?app=${slugParams || 'default'}&tenant=${tenantParams || 'default'}`
+      );
+    }
+
+    // 3. Captura de Erros
+    if (error) {
+      toaster.create({
+        title: "Autenticação Cancelada",
+        description: "Não foi possível autenticar com a conta Google.",
+        type: "error"
+      });
+      window.history.replaceState(
+        {}, 
+        document.title, 
+        `${window.location.pathname}?app=${slugParams || 'default'}&tenant=${tenantParams || 'default'}`
+      );
+    }
+  }, [dispatch]);
 
   const appNameLabel = appSlug === 'calango-food' 
     ? 'Calango Food' 
@@ -47,19 +102,13 @@ const Login = () => {
       return;
     }
 
-    // Validação de Senha (Registro)
     if (type === 'register' && data.password !== data.confirmPassword) {
       toaster.create({ title: "As senhas não coincidem", type: "error" });
       setLoading(false);
       return;
     }
 
-    // Injeta os dados da URL para o backend saber quem está pedindo acesso
-    const payload = {
-        ...data,
-        appSlug,
-        tenantId
-    };
+    const payload = { ...data, appSlug, tenantId };
 
     try {
       const response = type === 'login'
@@ -73,12 +122,10 @@ const Login = () => {
 
       toaster.create({ title: `Acesso Autorizado!`, type: "success" });
       
-      alert(`Sucesso! Token gerado para o app: ${appSlug}`);
-      
     } catch (err) {
       toaster.create({
         title: "Acesso Negado",
-        description: err.response?.data?.message || "Você não tem permissão ou os dados estão incorretos.",
+        description: err.response?.data?.message || "Permissão negada ou dados incorretos.",
         type: "error"
       });
     } finally { setLoading(false); }
@@ -88,7 +135,7 @@ const Login = () => {
     <Flex flex={1} minH="100vh" direction={{ base: 'column', md: 'row' }}>
       <Toaster />
       
-      {/* Lado Esquerdo - Padrão Calango Inc. Fixo */}
+      {/* Lado Esquerdo */}
       <Flex flex={1} bgGradient="to-br" gradientFrom="green.500" gradientTo="purple.600" justify="center" align="center" direction="column" p={8} color="white">
         <VStack gap={6}>
           <Box bg="rgba(255, 255, 255, 0.2)" p={8} borderRadius="full" backdropFilter="blur(10px)" boxShadow="xl">
@@ -99,13 +146,13 @@ const Login = () => {
         </VStack>
       </Flex>
 
-      {/* Lado Direito - Formulário */}
+      {/* Lado Direito */}
       <Flex flex={1} bg="gray.50" justify="center" align="center" p={4}>
         <Box w="full" maxW="md" boxShadow="2xl" borderRadius="2xl" bg="white" p={8}>
             <Tabs.Root defaultValue="login" colorPalette="green" variant="enclosed">
                 <Tabs.List w="full" mb={6}>
                     <Tabs.Trigger value="login" flex={1} py={3} fontWeight="bold">Login</Tabs.Trigger>
-                    <Tabs.Trigger value="register" flex={1} py={3} fontWeight="bold">Criar Usuário</Tabs.Trigger>
+                    <Tabs.Trigger value="register" flex={1} py={3} fontWeight="bold">Novo Usuário</Tabs.Trigger>
                 </Tabs.List>
 
                 {/* Aba de Login */}
@@ -120,7 +167,7 @@ const Login = () => {
                           type="button" 
                           mb={2}
                           onClick={() => {
-                            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/v1';
+                            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
                             window.location.href = `${backendUrl}/auth/google?appSlug=${appSlug}&tenantId=${tenantId}`;
                           }}
                         >
@@ -139,11 +186,11 @@ const Login = () => {
                     </form>
                 </Tabs.Content>
 
-                {/* Aba de Registro (Mock para testes) */}
+                {/* Aba de Registro */}
                 <Tabs.Content value="register">
                     <form onSubmit={(e) => handleAuth(e, 'register')}>
                     <VStack gap={4} align="stretch">
-                        <Heading size="md" textAlign="center" mb={2} color="gray.700">Criar Usuário de Teste</Heading>
+                        <Heading size="md" textAlign="center" mb={2} color="gray.700">Criar Novo Usuário</Heading>
                         <Field label="Nome">
                             <Input name="name" placeholder="Seu nome" required color="gray.800" />
                         </Field>

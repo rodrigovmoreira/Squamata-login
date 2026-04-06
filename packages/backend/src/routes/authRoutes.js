@@ -28,6 +28,9 @@ router.get('/google/callback',
   (req, res) => {
     // Desempacota o state
     const stateParams = req.query.state ? JSON.parse(Buffer.from(req.query.state, 'base64').toString()) : {};
+    
+    req.body = req.body || {}; 
+    
     req.body.appSlug = stateParams.appSlug;
     req.body.tenantId = stateParams.tenantId;
     
