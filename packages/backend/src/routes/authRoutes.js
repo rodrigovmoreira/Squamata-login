@@ -24,7 +24,7 @@ router.get('/google', (req, res, next) => {
 
 // Rota Google 2: O Google devolve o usuário para cá
 router.get('/google/callback', 
-  passport.authenticate('google', { session: false, failureRedirect: 'http://localhost:5174/login?error=true' }), 
+  passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5174'}/login?error=true` }), 
   (req, res) => {
     // Desempacota o state
     const stateParams = req.query.state ? JSON.parse(Buffer.from(req.query.state, 'base64').toString()) : {};
