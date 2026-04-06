@@ -1,9 +1,4 @@
-import {
-  AbsoluteCenter,
-  Button as ChakraButton,
-  Span,
-  Spinner,
-} from '@chakra-ui/react'
+import { AbsoluteCenter, Button as ChakraButton, Span, Spinner } from '@chakra-ui/react'
 import * as React from 'react'
 
 export const Button = React.forwardRef(function Button(props, ref) {

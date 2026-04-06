@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Flex, VStack, Heading, Text, Tabs, Input, Icon } from '@chakra-ui/react';
 import { Button } from "../components/ui/button";
 import { Field } from "../components/ui/field";
@@ -105,7 +105,7 @@ const Login = () => {
             <Tabs.Root defaultValue="login" colorPalette="green" variant="enclosed">
                 <Tabs.List w="full" mb={6}>
                     <Tabs.Trigger value="login" flex={1} py={3} fontWeight="bold">Login</Tabs.Trigger>
-                    <Tabs.Trigger value="register" flex={1} py={3} fontWeight="bold">Homologação (Criar)</Tabs.Trigger>
+                    <Tabs.Trigger value="register" flex={1} py={3} fontWeight="bold">Criar Usuário</Tabs.Trigger>
                 </Tabs.List>
 
                 {/* Aba de Login */}
