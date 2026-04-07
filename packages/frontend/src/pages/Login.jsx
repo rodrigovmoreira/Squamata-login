@@ -85,8 +85,8 @@ const Login = () => {
   const appNameLabel = appSlug === 'calango-food' 
     ? 'Calango Food' 
     : appSlug === 'calango-bot' 
-      ? 'Calango Bot' 
-      : 'Calango Inc.';
+      ? 'Calango, Inc.' 
+      : 'Calango, Inc.';
 
   const handleAuth = async (e, type) => {
     e.preventDefault();
