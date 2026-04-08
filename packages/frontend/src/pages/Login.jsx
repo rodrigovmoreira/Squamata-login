@@ -36,35 +36,52 @@ const Login = () => {
 
     // 1. Pista de Pouso: Captura o Token do Google
     if (token) {
+      // Prioridade: localStorage (se iniciado por este nav) > query param
+      const ssoTargetSlug = localStorage.getItem('sso_target_slug');
+      const ssoTargetTenant = localStorage.getItem('sso_target_tenant');
+      
+      const finalSlug = ssoTargetSlug || slugParams || 'default';
+      const finalTenant = ssoTargetTenant || tenantParams || 'default';
+
       try {
-        localStorage.setItem('token', token);
-        
-        // Decodifica o payload do JWT nativamente no navegador
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        let base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        // Adicionando padding obrigatório para base64 puro caso a string jwt não caiba certinho em múltiplos de 4:
+        while (base64.length % 4 !== 0) {
+          base64 += '=';
+        }
+
         const payload = JSON.parse(window.atob(base64));
-        
+
         const user = { 
           id: payload.uid, 
           email: payload.email, 
-          appSlug: payload.appSlug 
+          appSlug: finalSlug 
         };
         
+        localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
         dispatch({ type: 'SET_USER', payload: user });
 
         toaster.create({ title: `Acesso Autorizado via Google!`, type: "success" });
         
+        // Redirecionamento SSO para Calango Food
+        if (finalSlug === 'calango-food') {
+          localStorage.removeItem('sso_target_slug');
+          localStorage.removeItem('sso_target_tenant');
+          window.location.href = `http://localhost:5173/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+          return;
+        }
+
+        // 2. Limpeza de Segurança (Apaga o token da URL)
+        window.history.replaceState(
+          {}, 
+          document.title, 
+          `${window.location.pathname}?app=${finalSlug}&tenant=${finalTenant}`
+        );
+
       } catch (err) {
         console.error("Erro ao processar token do Google:", err);
       }
-
-      // 2. Limpeza de Segurança (Apaga o token da URL)
-      window.history.replaceState(
-        {}, 
-        document.title, 
-        `${window.location.pathname}?app=${slugParams || 'default'}&tenant=${tenantParams || 'default'}`
-      );
     }
 
     // 3. Captura de Erros
@@ -122,6 +139,12 @@ const Login = () => {
 
       toaster.create({ title: `Acesso Autorizado!`, type: "success" });
       
+      // Redirecionamento SSO para Calango Food
+      if (appSlug === 'calango-food') {
+        window.location.href = `http://localhost:5173/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+        return;
+      }
+      
     } catch (err) {
       toaster.create({
         title: "Acesso Negado",
@@ -167,6 +190,8 @@ const Login = () => {
                           type="button" 
                           mb={2}
                           onClick={() => {
+                            localStorage.setItem('sso_target_slug', appSlug);
+                            localStorage.setItem('sso_target_tenant', tenantId);
                             const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
                             window.location.href = `${backendUrl}/auth/google?appSlug=${appSlug}&tenantId=${tenantId}`;
                           }}
