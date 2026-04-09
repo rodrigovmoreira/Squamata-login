@@ -68,7 +68,7 @@ const Login = () => {
         if (finalSlug === 'calango-food') {
           localStorage.removeItem('sso_target_slug');
           localStorage.removeItem('sso_target_tenant');
-          window.location.href = `http://localhost:5173/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+          window.location.href = `${import.meta.env.VITE_CALANGO_FOOD_URL || 'http://localhost:5173'}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
           return;
         }
 
@@ -141,7 +141,7 @@ const Login = () => {
       
       // Redirecionamento SSO para Calango Food
       if (appSlug === 'calango-food') {
-        window.location.href = `http://localhost:5173/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+        window.location.href = `${import.meta.env.VITE_CALANGO_FOOD_URL || 'http://localhost:5173'}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
         return;
       }
       
