@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  squamata-login-backend:
+    build: ./backend
+    container_name: squamata-login-backend
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      # Aqui usamos o MagicDNS do Tailscale para falar com o Optiplex 3010
+      - MONGO_URI=mongodb://calango-inc-server-db:27017/squamata_auth
+    networks:
+      - squamata-network
+
+  squamata-login-frontend:
+    build: ./frontend
+    container_name: squamata-login-frontend
+    restart: always
+    ports:
+      - "5174:5174"
+    depends_on:
+      - squamata-login-backend
+    networks:
+      - squamata-network
+
+networks:
+  squamata-network:
+    driver: bridge
