@@ -16,7 +16,7 @@ services:
       - PORT=3001
       - NODE_ENV=production
       # Conexão direta com o Optiplex 3010
-      - MONGO_URI=mongodb://calango-inc-server-db:27018/squamata_login_db
+      #- MONGO_URI=mongodb://100.109.126.67:27018/squamata_login_db
     networks:
       - squamata-network
     healthcheck:
