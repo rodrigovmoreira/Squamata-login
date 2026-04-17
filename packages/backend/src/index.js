@@ -28,7 +28,10 @@ app.use(passport.initialize());
 
 app.use('/api/v1/auth', authRoutes);
 
-
+// Rota de Healthcheck para o Docker Compose saber que o sistema está vivo
+app.get('/api/v1/auth/health', (req, res) => {
+  res.status(200).json({ status: 'UP', message: 'Squamata is alive!' });
+});
 
   mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/squamata_login_db')
     .then(() => {
