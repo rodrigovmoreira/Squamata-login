@@ -1,25 +1,6 @@
 version: '3.8'
 
 services:
-  # 🗄️ MongoDB Database
-  mongo:
-    image: mongo:7-alpine
-    container_name: squamata-login-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    environment:
-      MONGO_INITDB_DATABASE: squamata_login_db
-    networks:
-      - squamata-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # 🔐 Backend API
   squamata-login-backend:
     build:
@@ -29,15 +10,13 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
-    depends_on:
-      mongo:
-        condition: service_healthy
     env_file:
-      - .env.docker
+      - .env
     environment:
       - PORT=3001
       - NODE_ENV=production
-      - MONGO_URI=mongodb://mongo:27017/squamata_login_db
+      # Conexão direta com o Optiplex 3010
+      - MONGO_URI=mongodb://calango-inc-server-db:27018/squamata_login_db
     networks:
       - squamata-network
     healthcheck:
@@ -52,6 +31,10 @@ services:
     build:
       context: ./
       dockerfile: ./packages/frontend/Dockerfile
+      args:
+        # Injeção das rotas públicas para o navegador do cliente
+        - VITE_API_URL=http://calango-inc-appserver:3001/api/v1
+        - VITE_CALANGO_FOOD_URL=http://calango-inc-appserver:5173
     container_name: squamata-login-frontend
     restart: unless-stopped
     ports:
@@ -60,7 +43,7 @@ services:
       squamata-login-backend:
         condition: service_healthy
     env_file:
-      - .env.docker
+      - .env
     networks:
       - squamata-network
     healthcheck:
@@ -73,7 +56,3 @@ services:
 networks:
   squamata-network:
     driver: bridge
-
-volumes:
-  mongo_data:
-    driver: local
