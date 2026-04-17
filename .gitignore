@@ -26,11 +26,6 @@ build/
 *.a
 *.so
 
-# Package managers
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-
 # OS files
 Thumbs.db
 .DS_Store
