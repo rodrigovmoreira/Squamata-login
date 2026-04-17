@@ -22,7 +22,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copiar package.json para reference
-COPY package.json ./
+COPY package*.json ./
 COPY packages/backend/package*.json ./packages/backend/
 
 # Instalar APENAS dependências de produção
