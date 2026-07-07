@@ -30,9 +30,13 @@ const Login = () => {
     const tenantParams = params.get('tenantId') || params.get('tenant');
     const token = params.get('token');
     const error = params.get('error');
+    const returnUrl = params.get('returnUrl');
 
     if (slugParams) setAppSlug(slugParams);
     if (tenantParams) setTenantId(tenantParams);
+
+    // Guarda returnUrl para redirecionamento genérico pós-login (SSO multi-app)
+    if (returnUrl) localStorage.setItem('sso_return_url', returnUrl);
 
     // 1. Pista de Pouso: Captura o Token do Google
     if (token) {
@@ -64,11 +68,13 @@ const Login = () => {
 
         toaster.create({ title: `Acesso Autorizado via Google!`, type: "success" });
         
-        // Redirecionamento SSO para Calango Food
-        if (finalSlug === 'calango-food') {
+        // Redirecionamento SSO genérico (suporta qualquer app com returnUrl)
+        const ssoReturnUrl = localStorage.getItem('sso_return_url');
+        if (ssoReturnUrl) {
           localStorage.removeItem('sso_target_slug');
           localStorage.removeItem('sso_target_tenant');
-          window.location.href = `${import.meta.env.VITE_CALANGO_FOOD_URL || 'http://localhost:5173'}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+          localStorage.removeItem('sso_return_url');
+          window.location.href = `${ssoReturnUrl}?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
           return;
         }
 
@@ -91,6 +97,7 @@ const Login = () => {
         description: "Não foi possível autenticar com a conta Google.",
         type: "error"
       });
+      localStorage.removeItem('sso_return_url');
       window.history.replaceState(
         {}, 
         document.title, 
@@ -139,9 +146,11 @@ const Login = () => {
 
       toaster.create({ title: `Acesso Autorizado!`, type: "success" });
       
-      // Redirecionamento SSO para Calango Food
-      if (appSlug === 'calango-food') {
-        window.location.href = `${import.meta.env.VITE_CALANGO_FOOD_URL || 'http://localhost:5173'}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+      // Redirecionamento SSO genérico (suporta qualquer app com returnUrl)
+      const ssoReturnUrl = localStorage.getItem('sso_return_url');
+      if (ssoReturnUrl) {
+        localStorage.removeItem('sso_return_url');
+        window.location.href = `${ssoReturnUrl}?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
         return;
       }
       
