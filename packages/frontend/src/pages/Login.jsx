@@ -72,6 +72,14 @@ const Login = () => {
           return;
         }
 
+        // Redirecionamento SSO para Calango Bot
+        if (finalSlug === 'calango-bot') {
+          localStorage.removeItem('sso_target_slug');
+          localStorage.removeItem('sso_target_tenant');
+          window.location.href = `${import.meta.env.VITE_CALANGO_BOT_URL || 'http://localhost:3004'}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+          return;
+        }
+
         // 2. Limpeza de Segurança (Apaga o token da URL)
         window.history.replaceState(
           {}, 
@@ -142,6 +150,12 @@ const Login = () => {
       // Redirecionamento SSO para Calango Food
       if (appSlug === 'calango-food') {
         window.location.href = `${import.meta.env.VITE_CALANGO_FOOD_URL || 'http://localhost:5173'}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+        return;
+      }
+
+      // Redirecionamento SSO para Calango Bot
+      if (appSlug === 'calango-bot') {
+        window.location.href = `${import.meta.env.VITE_CALANGO_BOT_URL || 'http://localhost:3004'}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
         return;
       }
       

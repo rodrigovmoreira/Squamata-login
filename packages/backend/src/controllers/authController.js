@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 const generateToken = (user, appSlug, tenantId) => {
   return jwt.sign(
     { uid: user._id, email: user.email, appSlug, tenantId },
-    process.env.JWT_SECRET || 'super_secret_jwt_key_calango_inc',
+    process.env.JWT_SECRET_LOGIN || 'super_secret_jwt_key_calango_inc',
     { expiresIn: '1d' }
   );
 };
