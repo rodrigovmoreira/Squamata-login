@@ -28,8 +28,9 @@ app.use(passport.initialize());
 
 app.use('/api/v1/auth', authRoutes);
 
-// Rota de Healthcheck para o Docker Compose saber que o sistema está vivo
-app.get('/api/v1/auth/health', (req, res) => {
+// Rota de Healthcheck para o Docker Compose saber que o sistema está vivo.
+// Caminho canônico único do ecossistema (ver ADR 002 em Calango-docs/docs/ADRs).
+app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'UP', message: 'Squamata is alive!' });
 });
 
