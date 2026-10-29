@@ -18,8 +18,10 @@ COPY packages/frontend ./packages/frontend/
 
 ARG VITE_API_URL
 ARG VITE_CALANGO_FOOD_URL
+ARG VITE_CALANGO_BOT_URL
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_CALANGO_FOOD_URL=$VITE_CALANGO_FOOD_URL
+ENV VITE_CALANGO_BOT_URL=$VITE_CALANGO_BOT_URL
 
 # Build da aplicação Vite
 RUN npm run build --workspace=@squamata-login/frontend

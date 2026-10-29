@@ -10,6 +10,21 @@ import { useNavigate } from 'react-router-dom';
 import { FcGoogle } from 'react-icons/fc';
 import { FaUserShield } from 'react-icons/fa'; 
 
+// ============================================================================
+// Mapa de destinos SSO por aplicação (multi-app).
+// Cada app do ecossistema Calango é redirecionado para o seu /auth/callback.
+// ============================================================================
+const APP_REDIRECTS = {
+  'calango-food': import.meta.env.VITE_CALANGO_FOOD_URL || 'http://localhost:5173',
+  'calango-bot': import.meta.env.VITE_CALANGO_BOT_URL || 'http://localhost:3004',
+};
+
+// Resolve a URL de callback do app de destino a partir do slug.
+const resolveCallbackUrl = (slug) => {
+  const base = APP_REDIRECTS[slug];
+  return base ? `${base}/auth/callback` : null;
+};
+
 const Login = () => {
   const [loading, setLoading] = useState(false);
   const { dispatch } = useApp();
@@ -30,9 +45,13 @@ const Login = () => {
     const tenantParams = params.get('tenantId') || params.get('tenant');
     const token = params.get('token');
     const error = params.get('error');
+    const returnUrl = params.get('returnUrl');
 
     if (slugParams) setAppSlug(slugParams);
     if (tenantParams) setTenantId(tenantParams);
+
+    // Guarda returnUrl para redirecionamento genérico pós-login (SSO multi-app)
+    if (returnUrl) localStorage.setItem('sso_return_url', returnUrl);
 
     // 1. Pista de Pouso: Captura o Token do Google
     if (token) {
@@ -55,7 +74,8 @@ const Login = () => {
         const user = { 
           id: payload.uid, 
           email: payload.email, 
-          appSlug: finalSlug 
+          appSlug: finalSlug,
+          tenantId: finalTenant
         };
         
         localStorage.setItem('token', token);
@@ -63,12 +83,24 @@ const Login = () => {
         dispatch({ type: 'SET_USER', payload: user });
 
         toaster.create({ title: `Acesso Autorizado via Google!`, type: "success" });
-        
-        // Redirecionamento SSO para Calango Food
-        if (finalSlug === 'calango-food') {
+
+        // 1.1 Redirecionamento SSO dedicado por app (calango-food, calango-bot, ...)
+        const callbackUrl = resolveCallbackUrl(finalSlug);
+        if (callbackUrl) {
           localStorage.removeItem('sso_target_slug');
           localStorage.removeItem('sso_target_tenant');
-          window.location.href = `${import.meta.env.VITE_CALANGO_FOOD_URL || 'http://localhost:5173'}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+          localStorage.removeItem('sso_return_url');
+          window.location.href = `${callbackUrl}?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+          return;
+        }
+
+        // 1.2 Redirecionamento SSO genérico (suporta qualquer app com returnUrl)
+        const ssoReturnUrl = localStorage.getItem('sso_return_url');
+        if (ssoReturnUrl) {
+          localStorage.removeItem('sso_target_slug');
+          localStorage.removeItem('sso_target_tenant');
+          localStorage.removeItem('sso_return_url');
+          window.location.href = `${ssoReturnUrl}?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
           return;
         }
 
@@ -99,6 +131,7 @@ const Login = () => {
         description: "Não foi possível autenticar com a conta Google.",
         type: "error"
       });
+      localStorage.removeItem('sso_return_url');
       window.history.replaceState(
         {}, 
         document.title, 
@@ -141,15 +174,29 @@ const Login = () => {
         : await authAPI.register(payload);
 
       const { token, user } = response.data;
+
+      // Enriquece o user com o contexto da aplicação de destino (multi-app SSO).
+      const enrichedUser = { ...user, appSlug, tenantId };
+
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      dispatch({ type: 'SET_USER', payload: user });
+      localStorage.setItem('user', JSON.stringify(enrichedUser));
+      dispatch({ type: 'SET_USER', payload: enrichedUser });
 
       toaster.create({ title: `Acesso Autorizado!`, type: "success" });
       
-      // Redirecionamento SSO para Calango Food
-      if (appSlug === 'calango-food') {
-        window.location.href = `${import.meta.env.VITE_CALANGO_FOOD_URL || 'http://localhost:5173'}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
+      // Redirecionamento SSO dedicado por app (calango-food, calango-bot, ...)
+      const callbackUrl = resolveCallbackUrl(appSlug);
+      if (callbackUrl) {
+        localStorage.removeItem('sso_return_url');
+        window.location.href = `${callbackUrl}?token=${token}&user=${encodeURIComponent(JSON.stringify(enrichedUser))}`;
+        return;
+      }
+
+      // Redirecionamento SSO genérico (suporta qualquer app com returnUrl)
+      const ssoReturnUrl = localStorage.getItem('sso_return_url');
+      if (ssoReturnUrl) {
+        localStorage.removeItem('sso_return_url');
+        window.location.href = `${ssoReturnUrl}?token=${token}&user=${encodeURIComponent(JSON.stringify(enrichedUser))}`;
         return;
       }
 
